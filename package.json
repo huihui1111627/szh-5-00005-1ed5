@@ -1,0 +1,10 @@
+{
+  "name": "gasnet-incident-response",
+  "version": "1.0.0",
+  "description": "长输天然气管网压力异常处置推演系统",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/"
+  }
+}

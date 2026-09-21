@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>长输管网压力异常处置推演系统</title>
+<link rel="stylesheet" href="/web/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">⛽</span>
+    <div>
+      <h1>长输天然气管网 · 压力异常处置推演</h1>
+      <div class="sub">管线剖面追踪 · 逐站压力传播 · 动作审批 · 稳定状态重演</div>
+    </div>
+  </div>
+  <div class="hud">
+    <div class="hud-item"><label>推演时刻</label><b id="hud-tick">T+0 min</b></div>
+    <div class="hud-item"><label>当前角色</label>
+      <select id="role-select">
+        <option value="operator">调度操作员</option>
+        <option value="supervisor">调度主管</option>
+      </select>
+    </div>
+    <div class="hud-item" id="hud-gw-wrap"><label>现场服务</label><b id="hud-gw" class="ok">在线</b></div>
+    <div class="hud-item" id="hud-recon-wrap" style="display:none"><label>核对状态</label><b class="warn">待核对</b></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button id="btn-step" class="btn">推进 1 min</button>
+  <button id="btn-step5" class="btn">推进 5 min</button>
+  <button id="btn-run" class="btn primary">自动推演</button>
+  <span class="sep"></span>
+  <button id="btn-gw-down" class="btn danger-ghost">模拟服务中断</button>
+  <button id="btn-gw-up" class="btn ok-ghost" style="display:none">模拟服务恢复</button>
+  <span class="sep"></span>
+  <button id="btn-snapshot" class="btn">保存快照</button>
+  <button id="btn-reset" class="btn ghost">重置场景</button>
+  <span class="hint">剧本：T+3 G2—G3 管段发生泄漏（约 42 万m³/d），T+60 起现场服务中断 12 分钟</span>
+</div>
+
+<div id="reconcile-banner" class="banner warn" style="display:none">
+  <b>现场服务已恢复。</b>已下发指令必须逐条核实现场设备反馈，核对完成前推演暂停。
+  请到「调度指令」区对待核对指令选择「反馈一致 / 不一致」。
+</div>
+
+<main class="layout">
+  <section class="col-main">
+    <div class="card">
+      <div class="card-h">
+        <h2>管线剖面 · 压力波传播</h2>
+        <div class="legend">
+          <span><i class="dot src"></i>气源</span>
+          <span><i class="dot comp"></i>压气站</span>
+          <span><i class="dot gate"></i>阀室</span>
+          <span><i class="dot demand"></i>门站</span>
+          <span><i class="valve-ic open"></i>阀开</span>
+          <span><i class="valve-ic closed"></i>阀关</span>
+          <span><i class="leak-ic"></i>泄漏</span>
+        </div>
+      </div>
+      <div id="profile"></div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-h"><h2>区域保供核算</h2></div>
+        <table class="data" id="region-table"></table>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>实时报警</h2><span id="alarm-count" class="badge"></span></div>
+        <div id="alarm-list" class="list"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>站场 / 阀室参数</h2></div>
+      <table class="data" id="site-table"></table>
+    </div>
+  </section>
+
+  <aside class="col-side">
+    <div class="card">
+      <div class="card-h"><h2>下达处置指令</h2></div>
+      <div class="form">
+        <label>动作类型
+          <select id="act-type">
+            <option value="VALVE">阀门开关</option>
+            <option value="LOAD">压缩机负荷</option>
+            <option value="REPAIR">泄漏封堵</option>
+          </select>
+        </label>
+        <label id="act-ref-label">目标阀门
+          <select id="act-ref"></select>
+        </label>
+        <label id="act-val-label" style="display:none">阀门动作
+          <select id="act-val"><option value="false">关闭</option><option value="true">开启</option></select>
+        </label>
+        <label id="act-load-label" style="display:none">目标负荷（%）
+          <input id="act-load" type="range" min="0" max="100" value="50">
+          <span id="act-load-val">50%</span>
+        </label>
+        <div id="preflight-box" class="preflight"></div>
+        <button id="btn-submit" class="btn primary wide">提交审批</button>
+        <div class="form-hint">操作员提交 → 主管审批（10 min 有效）→ 执行窗口 8 min；现场离线时挂起。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>调度指令台账</h2></div>
+      <div id="cmd-list" class="list cmd"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <h2>稳定状态 / 重演</h2>
+      </div>
+      <div id="snap-list" class="list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>事件时序</h2>
+        <select id="evt-filter" class="mini">
+          <option value="">全部</option>
+          <option value="ALARM">报警类</option>
+          <option value="CMD">指令类</option>
+        </select>
+      </div>
+      <div id="event-log" class="list log"></div>
+    </div>
+  </aside>
+</main>
+<script src="/web/app.js"></script>
+</body>
+</html>
