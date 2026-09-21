@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>长输天然气管网 · 压力异常应急处置推演台</title>
+<style>
+:root{
+  --bg:#0b1118; --panel:#121b26; --panel2:#17222f; --line:#263342;
+  --txt:#d9e4ee; --dim:#7d8fa1; --cyan:#37c2d8; --green:#37c97a;
+  --amber:#f0b429; --red:#ef5350; --blue:#4f8ff7; --violet:#9d7bf0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(1200px 700px at 70% -10%,#14202e 0%,var(--bg) 60%);
+  color:var(--txt);font:13px/1.5 "PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+  overflow:hidden;
+}
+.app{display:flex;flex-direction:column;height:100vh;min-width:1180px}
+/* ---------- 顶栏 ---------- */
+.topbar{display:flex;align-items:center;gap:14px;padding:8px 14px;
+  background:linear-gradient(180deg,#101a26,#0d1620);border-bottom:1px solid var(--line)}
+.brand{font-size:15px;font-weight:700;letter-spacing:1px;white-space:nowrap}
+.brand small{color:var(--dim);font-weight:400;margin-left:8px;font-size:11px}
+.tgroup{display:flex;align-items:center;gap:6px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:6px;padding:3px}
+button{background:#1c2937;color:var(--txt);border:1px solid #2e3d4e;border-radius:5px;
+  padding:5px 11px;cursor:pointer;font-size:12px;white-space:nowrap}
+button:hover{background:#253547;border-color:#3c5067}
+button:disabled{opacity:.38;cursor:not-allowed}
+button.primary{background:#13414a;border-color:#1e6874;color:#8fe6f0}
+button.danger{background:#46202a;border-color:#7a2e38;color:#f3a3a1}
+button.warn{background:#4a3712;border-color:#7a5b1e;color:#f5cf7e}
+.spacer{flex:1}
+.simclock{font-variant-numeric:tabular-nums;font-size:14px;color:var(--cyan);
+  font-weight:600;letter-spacing:1px}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+  background:var(--panel2);border-radius:20px;padding:2px 10px;font-size:12px;color:var(--dim);
+  max-width:132px;overflow:hidden;white-space:nowrap;flex:none}
+.chip b{color:var(--txt)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.g{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.a{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.dot.r{background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+/* ---------- 提示条 ---------- */
+.hint{padding:6px 14px;font-size:12px;color:var(--dim);background:#0e1722;
+  border-bottom:1px solid var(--line)}
+.hint b{color:var(--cyan)}
+/* ---------- 主区域 ---------- */
+.main{flex:1;display:flex;min-height:0}
+.leftcol{flex:1;display:flex;flex-direction:column;min-width:0}
+.rightcol{width:392px;flex:none;border-left:1px solid var(--line);
+  display:flex;flex-direction:column;background:var(--panel)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:8px}
+.section-h{padding:6px 10px;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:8px;letter-spacing:.5px}
+.section-h .tag{margin-left:auto;color:#9fb2c4;font-size:11px}
+#profile{flex:1;min-height:240px;position:relative;margin-bottom:0}
+#profile svg{width:100%;height:100%;display:block}
+.legend{position:absolute;left:14px;bottom:10px;display:flex;gap:14px;font-size:11px;color:var(--dim);
+  background:rgba(10,17,25,.72);border:1px solid var(--line);border-radius:6px;padding:5px 10px}
+.legend i{display:inline-block;width:22px;height:5px;border-radius:3px;margin-right:5px;vertical-align:middle}
+#trendwrap{height:158px;flex:none}
+#trend{display:block;width:100%;height:calc(100% - 30px)}
+/* ---------- 右侧 tabs ---------- */
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{flex:1;text-align:center;padding:9px 0;cursor:pointer;color:var(--dim);font-size:12.5px;
+  border-bottom:2px solid transparent}
+.tab.on{color:var(--cyan);border-bottom-color:var(--cyan);background:#0f1925}
+.tabbody{flex:1;overflow-y:auto;min-height:0}
+.pane{display:none;padding:10px}
+.pane.on{display:block}
+/* ---------- 表单 ---------- */
+.fld{margin-bottom:9px}
+.fld label{display:block;font-size:11px;color:var(--dim);margin-bottom:3px}
+select,input[type=range]{width:100%}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:5px;padding:6px;font-size:12.5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rv{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-top:2px}
+.rv b{color:var(--cyan);font-variant-numeric:tabular-nums}
+.guard{font-size:11.5px;border-radius:5px;padding:6px 8px;margin:6px 0;display:none}
+.guard.ok{display:block;background:#10331f;border:1px solid #1e5a35;color:#8fe6b0}
+.guard.warn{display:block;background:#3c2c0b;border:1px solid #7a5b1e;color:#f5cf7e}
+.guard.bad{display:block;background:#3d1620;border:1px solid #7a2e38;color:#f3a3a1}
+/* ---------- 指令卡片 ---------- */
+.cmd{border:1px solid var(--line);border-radius:7px;margin-bottom:8px;background:var(--panel2);
+  overflow:hidden}
+.cmd .ch{display:flex;align-items:center;gap:7px;padding:6px 9px;font-size:12px}
+.cmd .id{color:var(--dim);font-variant-numeric:tabular-nums}
+.cmd .desc{flex:1}
+.st{font-size:10.5px;padding:1px 8px;border-radius:10px;border:1px solid}
+.st.PENDING{color:#f5cf7e;border-color:#7a5b1e;background:#332708}
+.st.APPROVED{color:#8fe6f0;border-color:#1e6874;background:#0e3137}
+.st.EXECUTING{color:#c9b5f7;border-color:#5d4592;background:#241a3d}
+.st.DONE{color:#8fe6b0;border-color:#1e5a35;background:#10331f}
+.st.EXPIRED{color:#9fb2c4;border-color:#46566a;background:#202a36}
+.st.CANCELED{color:#9fb2c4;border-color:#46566a;background:#202a36}
+.st.REJECTED{color:#f3a3a1;border-color:#7a2e38;background:#3d1620}
+.st.FAILED{color:#f3a3a1;border-color:#7a2e38;background:#3d1620}
+.cmd .cb{padding:0 9px 8px;font-size:11.5px;color:var(--dim)}
+.steps{margin:5px 0 2px;border-left:2px solid #2a3848;padding-left:9px}
+.step{padding:2px 0;display:flex;gap:7px;align-items:center}
+.step .sd{width:13px;height:13px;border-radius:50%;border:1.5px solid #46566a;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:8px;color:transparent}
+.step.done .sd{background:var(--green);border-color:var(--green);color:#06250f}
+.step.run .sd{border-color:var(--violet);color:var(--violet);animation:spin 1.4s linear infinite}
+.step.wait .sd{}
+.step.cancel .sd{background:#46566a;border-color:#46566a}
+.ttl{height:3px;background:#22303f;border-radius:2px;margin-top:5px;overflow:hidden}
+.ttl i{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--red))}
+.cmd .acts{display:flex;gap:6px;padding:0 9px 8px}
+.cmd .acts button{padding:3px 9px;font-size:11.5px}
+/* ---------- 区域 / 设备 ---------- */
+.zone{border:1px solid var(--line);border-radius:7px;margin-bottom:8px;background:var(--panel2);padding:8px 10px}
+.zone .zh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.zone .zn{font-weight:600}
+.zone .zs{margin-left:auto;font-size:11px;padding:1px 9px;border-radius:10px}
+.zs.ok{color:#8fe6b0;background:#10331f;border:1px solid #1e5a35}
+.zs.low{color:#f5cf7e;background:#332708;border:1px solid #7a5b1e}
+.zs.crit{color:#f3a3a1;background:#3d1620;border:1px solid #7a2e38}
+.meter{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.meter div{background:#0f1925;border:1px solid var(--line);border-radius:5px;padding:4px 2px}
+.meter .mv{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.meter .mk{font-size:10px;color:var(--dim)}
+.bar{height:5px;background:#22303f;border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.equip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;
+  background:var(--panel2);padding:6px 9px;margin-bottom:6px}
+.equip .en{width:118px}
+.equip .es{font-size:11px;color:var(--dim);flex:1}
+.equip .ev{font-variant-numeric:tabular-nums;color:var(--cyan);width:72px;text-align:right}
+.fan{display:inline-block;width:11px;height:11px;border-radius:50%;
+  background:conic-gradient(var(--cyan) 0 25%,#2b3a4b 0 50%,var(--cyan) 0 75%,#2b3a4b 0);
+  vertical-align:-1px;margin-right:6px}
+.fan.stop{background:#2b3a4b}
+.fan.fast{animation:spin .5s linear infinite}
+.fan.mid{animation:spin 1.1s linear infinite}
+.fan.slow{animation:spin 2.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ---------- 日志 ---------- */
+#logpane{font-size:11.5px}
+.logline{padding:3px 6px;border-bottom:1px dashed #1d2936;display:flex;gap:8px}
+.logline .lt{color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+.logline.ALARM{color:#f3a3a1}
+.logline.CMD{color:#9fd6e2}
+.logline.SYS{color:var(--violet)}
+.logline.OK{color:#8fe6b0}
+/* ---------- 弹窗 ---------- */
+.modal-mask{position:fixed;inset:0;background:rgba(4,9,14,.72);display:none;
+  align-items:center;justify-content:center;z-index:50}
+.modal-mask.show{display:flex}
+.modal{width:560px;max-height:82vh;overflow:auto;background:var(--panel);
+  border:1px solid #324559;border-radius:10px;box-shadow:0 22px 70px rgba(0,0,0,.6)}
+.modal h3{padding:13px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.modal .mb{padding:14px 16px}
+.modal .mf{padding:11px 16px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end}
+.fbrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:7px;
+  padding:8px 10px;margin-bottom:8px;background:var(--panel2)}
+.fbrow.match{border-color:#1e5a35}
+.fbrow.mismatch{border-color:#7a2e38}
+.fbrow .fi{flex:1}
+.fbrow .fr{font-size:11.5px;padding:2px 9px;border-radius:10px}
+.ckline{font-size:12px;color:var(--dim);margin:8px 0}
+.ckline .ok{color:#8fe6b0}.ckline .no{color:#f5cf7e}
+.snaplist .snap{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;
+  padding:7px 10px;margin-bottom:7px;background:var(--panel2)}
+.snap .si{flex:1}.snap .st2{font-size:11px;color:var(--dim)}
+/* svg 文本 */
+svg text{font-family:inherit;pointer-events:none}
+.node-g{cursor:pointer}
+.press-label{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.name-label{font-size:10.5px;fill:#9fb2c4}
+.sel-ring{fill:none;stroke:#ffd54f;stroke-width:2;stroke-dasharray:4 3;display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="brand">长输管网 · 压力异常应急处置推演台
+      <small>SCADA 模拟 / 干线 G1（气源A）— G2（气源B 经联络阀）</small>
+    </div>
+    <div class="tgroup">
+      <button id="btnPlay">⏸ 暂停</button>
+      <button id="btnStep">单步</button>
+      <button id="btnSpeed" title="仿真速度">速度 1×</button>
+    </div>
+    <div class="tgroup">
+      <button class="danger" id="btnLeak">⚡ 注入泄漏 F2–F3</button>
+      <button class="warn" id="btnOffline">📡 中断通信</button>
+    </div>
+    <div class="tgroup">
+      <button class="primary" id="btnReplay">↺ 稳定点重演</button>
+      <button class="warn" id="btnExitReplay" style="display:none">✖ 退出重演</button>
+      <button id="btnReset">复位基线</button>
+    </div>
+    <div class="spacer"></div>
+    <span class="chip">仿真时钟 <b class="simclock" id="clock">08:00:00</b></span>
+    <span class="chip" id="sysState"><span class="dot g"></span><b>系统稳定</b></span>
+    <span class="chip" id="commState"><span class="dot g"></span><b>通信正常</b></span>
+  </div>
+
+  <div class="hint">
+    想定：<b>F2 阀室 ↔ F3 阀室</b>之间出现疑似泄漏（点击右上「注入泄漏」）。可在「调度指令」页发起
+    <b>隔离管段 / 降压缩机负荷 / 改供气路径</b>；指令需审批，<b>45 秒</b>未审批自动失效。
+    错误关阀顺序会触发超压或压缩机抽空 —— 隔离宏内置规程校验。处置后可从任一稳定快照重演。
+  </div>
+
+  <div class="main">
+    <!-- 左侧 -->
+    <div class="leftcol">
+      <div class="panel" id="profile">
+        <div class="section-h">管线剖面 · 压力逐站传播
+          <span class="tag" id="selInfo">点击节点查看详情 · 颜色=管段压力</span>
+        </div>
+        <svg id="svg" viewBox="0 0 980 460" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="legend">
+          <span><i style="background:#37c97a"></i>≥4.0 MPa 正常</span>
+          <span><i style="background:#f0b429"></i>2.5–4.0 偏低</span>
+          <span><i style="background:#ef5350"></i>&lt;2.5 欠压</span>
+          <span><i style="background:#9d7bf0"></i>压力波</span>
+          <span><span style="color:#ef5350">✸</span> 泄漏点</span>
+        </div>
+      </div>
+      <div class="panel" id="trendwrap">
+        <div class="section-h">关键站压力 / 流量趋势（最近 6 分钟）
+          <span class="tag">
+            <span style="color:#37c2d8">━ S1出口</span>&nbsp;
+            <span style="color:#4f8ff7">━ S2出口</span>&nbsp;
+            <span style="color:#37c97a">━ 北区分输</span>&nbsp;
+            <span style="color:#f0b429">━ 供气量%</span>
+          </span>
+        </div>
+        <canvas id="trend"></canvas>
+      </div>
+    </div>
+
+    <!-- 右侧 -->
+    <div class="rightcol">
+      <div class="tabs">
+        <div class="tab on" data-tab="cmd">调度指令</div>
+        <div class="tab" data-tab="zone">区域保障 / 设备</div>
+        <div class="tab" data-tab="log">事件日志</div>
+      </div>
+      <div class="tabbody">
+        <!-- 指令 -->
+        <div class="pane on" id="paneCmd">
+          <div class="fld">
+            <label>指令类型</label>
+            <select id="cmdType">
+              <option value="valve">阀门操作（开 / 关）</option>
+              <option value="compressor">压缩机负荷调整</option>
+              <option value="isolate">隔离管段（多步宏）</option>
+              <option value="reroute">改变供气路径（联络阀供气）</option>
+            </select>
+          </div>
+          <div id="formValve">
+            <div class="fld"><label>目标阀门</label><select id="valveTarget"></select></div>
+            <div class="fld"><label>目标阀位</label>
+            <select id="valvePos"><option value="0">关闭</option><option value="1">全开</option></select></div>
+          </div>
+          <div id="formComp">
+            <div class="fld"><label>目标压缩机</label><select id="compTarget"></select></div>
+            <div class="fld"><label>目标负荷 <span id="compLbl" style="color:var(--cyan)">85%</span></label>
+            <input type="range" id="compLoad" min="0" max="100" step="1" value="85"></div>
+          </div>
+          <div id="formIso">
+            <div class="fld"><label>疑似泄漏管段</label>
+            <select id="isoTarget"></select></div>
+            <div class="fld"><label>执行顺序（规程）</label>
+            <select id="isoOrder">
+              <option value="standard">标准规程：先降 C1 负荷 → 关上游阀 → 关下游阀 → 降 C2 → 开联络阀</option>
+              <option value="fast">先关下游阀 F3（错误顺序，快但危险）</option>
+            </select></div>
+          </div>
+          <div id="formReroute">
+            <div class="fld"><label>路径方案</label>
+            <select id="rerouteTarget">
+              <option value="openTie">开启 联络阀 V-Tie，由气源B向北区转供</option>
+              <option value="closeTie">关闭 联络阀，恢复干线单源供气</option>
+            </select></div>
+          </div>
+          <div id="guardBox"></div>
+          <button class="primary" id="btnSubmit" style="width:100%;padding:8px">提交指令（待审批）</button>
+          <div class="ckline" style="margin-top:8px">
+            指令下达后进入 <span class="ok">PENDING</span>，45 秒内可审批 / 撤销；
+            审批通过后宏步骤逐拍执行，<span class="no">尚未执行的步骤仍可撤销</span>。
+          </div>
+          <div class="section-h" style="margin:12px -10px 6px;border-radius:0">指令队列 <span class="tag" id="cmdCount"></span></div>
+          <div id="cmdList"></div>
+        </div>
+        <!-- 区域 -->
+        <div class="pane" id="paneZone">
+          <div class="section-h" style="margin:-10px -10px 8px;border-radius:0">各区域最低供应核算</div>
+          <div id="zoneList"></div>
+          <div class="section-h" style="margin:12px -10px 8px;border-radius:0">压缩机站</div>
+          <div id="compList"></div>
+          <div class="section-h" style="margin:12px -10px 8px;border-radius:0">关键阀位</div>
+          <div id="valveList"></div>
+        </div>
+        <!-- 日志 -->
+        <div class="pane" id="logpane"><div id="logList"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 审批弹窗 -->
+<div class="modal-mask" id="approveModal">
+  <div class="modal">
+    <h3>指令审批 <span style="color:var(--dim);font-size:12px;font-weight:400">— 调度长二次确认</span></h3>
+    <div class="mb" id="approveBody"></div>
+    <div class="mf">
+      <button id="apReject" class="danger">驳回</button>
+      <button id="apApprove" class="primary">批准执行</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通信恢复核验弹窗 -->
+<div class="modal-mask" id="verifyModal">
+  <div class="modal">
+    <h3>通信恢复 · 现场设备反馈核验</h3>
+    <div class="mb" id="verifyBody"></div>
+    <div class="mf">
+      <button id="vyCancel" class="danger">终止未确认指令</button>
+      <button id="vyResume" class="primary" disabled>核验一致，续跑</button>
+    </div>
+  </div>
+</div>
+
+<!-- 重演弹窗 -->
+<div class="modal-mask" id="replayModal">
+  <div class="modal">
+    <h3>从稳定状态重演</h3>
+    <div class="mb">
+      <div class="ckline">重演将回到所选稳定快照，并按原始时间节拍自动重放当时已记录的全部操作；
+        重演期间审批自动通过。可随时退出重演接管处置。</div>
+      <div class="snaplist" id="snapList"></div>
+    </div>
+    <div class="mf">
+      <button id="rpClose">取消</button>
+      <button id="rpStart" class="primary" disabled>开始重演</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= 拓扑配置 ================= */
+const PMAX_HI=6.65, P_HI=6.5, P_LOW=4.0, P_CRIT=2.5;   // 超压/高报/低限/欠压
+const START_HHMM=8*60;                                 // 08:00
+const TICK_MS=2000;                                    // 1 拍=2 秒仿真
+const APPROVE_TTL_MS=45000;                            // 审批超时 45s
+
+// 节点：pressure=固定源压力；demand=分输负荷；x/y=剖面坐标
+const NODES=[
+ ["SRC",{name:"气源A首站",x:60,y:205,pressure:5.6,src:true}],
+ ["V1", {name:"1#阀室",x:150,y:205}],
+ ["HB", {name:"C1压出站",x:215,y:205}],
+ ["F1", {name:"F1分输",x:285,y:205,demand:6}],
+ ["F2", {name:"2#阀室(F2)",x:375,y:205,demand:3}],
+ ["LK", {name:"泄漏点",x:475,y:205,virtual:true}],
+ ["F3", {name:"3#阀室(F3)",x:565,y:205,demand:3}],
+ ["HC", {name:"C2吸入侧",x:640,y:205}],
+ ["S2O",{name:"C2压出站",x:710,y:205}],
+ ["F4", {name:"F4分输",x:780,y:205,demand:9}],
+ ["P2", {name:"2#分输压气站",x:850,y:205,demand:7}],
+ ["N4", {name:"北区门站N4",x:920,y:205,demand:12}],
+ ["N5", {name:"北区用户N5",x:920,y:120,demand:14}],
+ ["T",  {name:"末端T",x:920,y:300,demand:5}],
+ ["SB", {name:"气源B",x:475,y:60,pressure:6.9,src:true}],
+ ["FN", {name:"联络接点(F3)",x:565,y:120,demand:0}],
+];
+const NODE_DEFAULTS={v:260};
+const FIXED_V={SRC:1e9,SB:1e9,LK:40};
+
+// 管段：a,b 端点；g 导纳；va/vb 端点阀（null=不可控/无）
+const EDGES=[
+ {id:"e1", a:"SRC",b:"V1", g:120, va:"V-01", vb:null},
+ {id:"e2", a:"V1", b:"HB", g:260,va:null,  vb:null},
+ {id:"c1", a:"HB", b:"F1", g:30, comp:"C1", va:"V-02", vb:null},
+ {id:"e4", a:"F1", b:"F2", g:75, va:null,  vb:"V-F2"},
+ {id:"e5a",a:"F2", b:"LK", g:200, va:null,  vb:null},
+ {id:"e5b",a:"LK", b:"F3", g:200, va:null,  vb:"V-F3"},
+ {id:"e6", a:"F3", b:"HC", g:130, va:null,  vb:null},
+ {id:"c2", a:"HC", b:"S2O",g:30, comp:"C2", va:"V-05", vb:null},
+ {id:"e8", a:"S2O",b:"F4", g:130, va:null,  vb:null},
+ {id:"e9", a:"F4", b:"P2", g:140, va:null,  vb:null},
+ {id:"e10",a:"P2", b:"N4", g:180, va:null,  vb:null},
+ {id:"e11",a:"N4", b:"N5", g:160, va:null,  vb:null},
+ {id:"e12",a:"N4", b:"T",  g:160, va:null,  vb:null},
+ {id:"tie",a:"SB", b:"FN", g:150, va:"V-TIE",vb:null},
+ {id:"tie2",a:"FN",b:"F3", g:230, va:null,  vb:null},
+];
+const COMPRS={
+ // pset=满负荷目标出口压力；pl0=零负荷出口压力；hflow=通流对出口压力的软化
+ C1:{name:"C1 压气站",edge:"c1", load:0.85, pmax:7.25,pset:7.6,pl0:4.2,qmax:78,hflow:0.55},
+ C2:{name:"C2 压气站",edge:"c2", load:0.82, pmax:7.2,pset:7.35,pl0:3.6,qmax:66,hflow:0.5},
+};
+// 阀门注册表（id -> 名称 / 所在边 / 位置 / 初始开度）
+const VALVE_INIT={
+ "V-01":{name:"首站出站阀",edge:"e1",  end:"va",pos:1},
+ "V-02":{name:"C1入口阀", edge:"c1",  end:"va",pos:1},
+ "V-F2":{name:"F2阀室截断阀",edge:"e5a",end:"vb",pos:1},
+ "V-F3":{name:"F3阀室截断阀",edge:"e5b",end:"vb",pos:1},
+ "V-05":{name:"C2入口阀", edge:"c2",  end:"va",pos:1},
+ "V-TIE":{name:"气源B联络阀",edge:"tie",end:"va",pos:0},
+};
+// 区域最低供应核算
+const ZONES=[
+ {id:"south",name:"南区 F1+F2+F3+F4", nodes:["F1","F2","F3","F4"], pmin:4.0},
+ {id:"mid",  name:"中部 P2",          nodes:["P2"],                pmin:4.0},
+ {id:"north",name:"北区 N4/N5/T",     nodes:["N4","N5","T"],       pmin:4.0},
+];
+// 隔离宏的候选管段
+const ISO_SEGMENTS=[{
+ id:"segF2F3",name:"F2–F3（疑似泄漏段，含 LK）",
+ close:["V-F2","V-F3"], needCompPre:["C1"], needCompPost:["C2"],
+ tie:"V-TIE", reducedLoad:0.08, c2Load:0.55,
+}];
+const CLOSED_G=0.008;   // 关阀后残余导纳
+const LEAK_G=110, LEAK_P=0.12;
+const NODE_INFO={}; NODES.forEach(([id,d])=>NODE_INFO[id]=d);
+
+/* ================= 全局状态 ================= */
+let S=null;
+function freshState(){
+  const p={},v={};
+  NODES.forEach(([id,d])=>{p[id]=d.pressure!==undefined?d.pressure:5.5;v[id]=FIXED_V[id]||NODE_DEFAULTS.v;});
+  return {
+    tick:0, minute:START_HHMM, running:true, speed:1, leak:false,
+    offline:false, offlineTick:null,
+    p, v,
+    valves:Object.fromEntries(Object.entries(VALVE_INIT).map(([id,d])=>[id,d.pos])),
+    comps:Object.fromEntries(Object.entries(COMPRS).map(([id,c])=>[id,{load:c.load,run:true,q:0,dp:0,trip:false}])),
+    flow:{},              // edgeId -> 流量(方向 a->b 为正)
+    history:{},           // nodeId/metric -> [{t,p}]
+    events:[],            // 事件/日志
+    alarms:{},            // 报警去重
+    cmds:[], seq:1,
+    waves:[],
+    snapshots:[],
+    replay:null,          // {fromTick, actions:[{relTick,fn}], idx}
+    pendingVerify:[],     // 通信恢复待核验指令
+    selected:null,
+    modalCmd:null,
+    lastZone:{},
+    delivered:{},         // zoneId -> 实际供气比
+  };
+}
+function log(kind,text){
+  S.events.push({tick:S.tick,kind,text,clock:fmtClock(S.minute)});
+  if(S.events.length>400)S.events.shift();
+}
+function fmtClock(m){
+  const h=Math.floor(m/60)%24, mm=Math.floor(m%60), ss=Math.round((m%1)*60);
+  return `${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+}
+
+/* ---------- 水力：单步（Jacobi 松弛，无条件稳定，带传播迟滞） ---------- */
+const KNODE=0.8, KLEAK=10;
+const ALPHA={LK:0.9};
+function edgeG(e){
+  let g=e.g;
+  if(e.comp) g=0;
+  if(e.va && S.valves[e.va]===0) g*=CLOSED_G;
+  if(e.vb && S.valves[e.vb]===0) g*=CLOSED_G;
+  return g;
+}
+function stepPhysics(){
+  const sumg=Object.fromEntries(NODES.map(([id])=>[id,0]));
+  const sump=Object.fromEntries(NODES.map(([id])=>[id,0]));
+  S.flow={};
+  const CG=34; // 压缩机虚拟耦合导纳（仅压力传递，不计入物理流量）
+  // 普通管段
+  for(const e of EDGES){
+    if(e.comp){
+      let open=1;
+      if(e.va&&S.valves[e.va]===0)open=0;
+      if(e.vb&&S.valves[e.vb]===0)open=0;
+      if(open){
+        sumg[e.a]+=CG;sumg[e.b]+=CG;
+        sump[e.a]+=CG*S.p[e.b];sump[e.b]+=CG*S.p[e.a];
+      }
+    }else{
+      const g=edgeG(e);
+      const q=g*(S.p[e.a]-S.p[e.b]);
+      S.flow[e.id]=q;
+      sumg[e.a]+=g; sumg[e.b]+=g;
+      sump[e.a]+=g*S.p[e.b]; sump[e.b]+=g*S.p[e.a];
+    }
+  }
+  // 压缩机：Q=qmax*load*(1-k*(Pd-pmax))，受吸入压力约束；吸入>压出且止回 -> 停
+  const qext=Object.fromEntries(NODES.map(([id])=>[id,0]));
+  for(const [id,c] of Object.entries(COMPRS)){
+    const e=EDGES.find(x=>x.id===c.edge);
+    const cs=S.comps[id];
+    const pin=S.p[e.a], pout=S.p[e.b];
+    let openFactor=1;
+    if(e.va && S.valves[e.va]===0) openFactor*=CLOSED_G;
+    if(e.vb && S.valves[e.vb]===0) openFactor*=CLOSED_G;
+    // 目标出口压力 = pl0 + load*(pset-pl0) - 流量软化；超压限幅
+    // 抽空：吸入侧绝对压力过低；或吸入显著高于压出（倒流趋势，止回阀关闭）
+    const starve=pin<3.75 || pin>pout+0.8;
+    cs._lowT=(cs._lowT||0)+(starve?1:-1);
+    if(cs._lowT<0)cs._lowT=0;
+    if(!cs.trip&&cs._lowT>=4&&cs._everRun)cs.trip=true;
+    cs._okT=(cs._okT||0)+(starve?0:1);
+    if(cs.trip&&pin>4.2&&(cs._okT||0)>=6){
+      cs.trip=false;cs._lowT=0;cs._okT=0;cs._everRun=false;
+      log("OK",`${c.name} 吸入压力恢复至 ${pin.toFixed(2)}MPa，联锁复位，重新并网`);
+    }
+    const run=!cs.trip && openFactor>0.5 && !starve;
+    if(run)cs._everRun=true;
+    const q=run?c.qmax*cs.load*clamp((c.pset+0.8-pout)/0.8,0,1):0;
+    cs.q=q; cs.run=run; cs.dp=run?pout-pin:0; cs.starve=starve;
+    S.flow[e.id]=q;
+    qext[e.b]+=q; qext[e.a]-=q;
+    if(run){
+      // 压力设定值作为出口节点的强目标源
+      const pTarget=Math.min(c.pmax,c.pl0+cs.load*(c.pset-c.pl0));
+      sumg[e.b]+=70; sump[e.b]+=70*pTarget;
+    }
+  }
+  // 分输负荷（低压时用气受限）+ 泄漏
+  for(const [id,d] of NODES){
+    if(d.demand){
+      const avail=clamp((S.p[id]-1.0)/2.2,0,1);
+      qext[id]-=d.demand*avail;
+    }
+    if(id==="LK" && S.leak){
+      const q=LEAK_G*Math.max(0,S.p.LK-LEAK_P);
+      S.flow.__leak=q; qext.LK-=q;
+    }
+  }
+  // 松弛：p ← (1-α)p + α(Σg·p邻+q外/K)/(Σg+K)
+  for(const [id,d] of NODES){
+    if(d.src) continue;
+    const K=id==="LK"?KLEAK:KNODE;
+    const denom=sumg[id]+K;
+    const target=(sump[id]+qext[id])/denom;
+    const a=ALPHA[id]??(id==="LK"?0.9:0.55);
+    S.p[id]=Math.max(0.08,(1-a)*S.p[id]+a*target);
+  }
+}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+
+/* ---------- 压力波（逐站传播可视化/事件） ---------- */
+function emitWave(origin,kind,mag){
+  const dist={[origin]:0}, seen=new Set([origin]);
+  let frontier=[origin];
+  while(frontier.length){
+    const nxt=[];
+    for(const a of frontier){
+      for(const e of EDGES){
+        const b=e.a===a?e.b:(e.b===a?e.a:null);
+        if(!b||seen.has(b))continue;
+        let blocked=false;
+        if(e.va&&S.valves[e.va]===0&&(e.comp||edgeBlocked(e)))blocked=true;
+        if(e.vb&&S.valves[e.vb]===0)blocked=true;
+        const dd=dist[a]+(blocked?0.4:1);
+        if(dist[b]===undefined||dd<dist[b])dist[b]=dd;
+        seen.add(b); nxt.push(b);
+      }
+    }
+    frontier=nxt;
+  }
+  for(const [id,dd] of Object.entries(dist))
+    S.waves.push({node:id,kind,mag,arrive:S.tick+Math.round(dd*2),from:origin});
+}
+function edgeBlocked(e){return false;}
+
+/* ---------- 报警检测 ---------- */
+function checkAlarms(){
+  const active={};
+  const ring=(id,key,msg)=>{
+    active[id+":"+key]=true;
+    const k=id+":"+key;
+    if(!S.alarms[k]){S.alarms[k]=S.tick;log("ALARM",msg);}
+  };
+  for(const [id,d] of NODES){
+    if(d.virtual||d.src)continue;
+    const p=S.p[id];
+    const isolatedSeg=id==="F2"&&S.valves["V-F2"]===0&&S.leak;
+    if(isolatedSeg)continue;
+    if(p>PMAX_HI){ring(id,"op",`【超压】${d.name} ${p.toFixed(2)}MPa > ${PMAX_HI} — 错误关阀形成超压点`);
+      if(!S.everAlarm?.[id+":op"])log("ALARM",`【超压事件·已记录】${d.name} 峰值突破 ${PMAX_HI}MPa（即使后续回落仍计入事故）`);
+      (S.everAlarm??={})[id+":op"]=true;}
+    if(p<P_CRIT)ring(id,"crit",`【严重欠压】${d.name} ${p.toFixed(2)}MPa < ${P_CRIT}`);
+    else if(p<P_LOW)ring(id,"low",`【低压】${d.name} ${p.toFixed(2)}MPa < 最低供应 ${P_LOW}`);
+  }
+  for(const [id,c] of Object.entries(COMPRS)){
+    const cs=S.comps[id];
+    if(cs.trip){
+      ring(id,"trip",`【压缩机抽空跳闸】${c.name} 已联锁停机（吸入压力不足），需现场复位`);
+    }
+  }
+  for(const k of Object.keys(S.alarms))if(!active[k])delete S.alarms[k];
+}
+function clearAlarm(id,key){delete S.alarms[id+":"+key];}
+
+/* ---------- 区域保障重算 ---------- */
+function calcZones(){
+  const out={};
+  for(const z of ZONES){
+    let ratioSum=0, minp=99, active=0, isoNote=[];
+    for(const nid of z.nodes){
+      // 已截断阀隔离的节点不再计入保障分母
+      if(nid==="F2"&&S.valves&&S.valves["V-F2"]===0){isoNote.push("F2已隔离");continue;}
+      ratioSum+=clamp((S.p[nid]-P_CRIT)/(z.pmin-P_CRIT),0,1);
+      minp=Math.min(minp,S.p[nid]);
+      active++;
+    }
+    const ratio=active?ratioSum/active:1;
+    out[z.id]={ratio,minp,
+      status: minp<z.pmin-0.6&&active?"crit": ratio<0.985?"low":"ok",note:isoNote.join("，")};
+  }
+  S.delivered=out; return out;
+}
+
+/* ---------- 历史 ---------- */
+function pushHistory(){
+  for(const id of ["HB","F1","HC","S2O","F2","F3","F4","P2","N4","N5","T","LK"])
+    (S.history[id]??=[]).push({t:S.tick,p:S.p[id]});
+  const z=calcZones();
+  (S.history.__north??=[]).push({t:S.tick,p:z.north.ratio*100});
+  if(Object.values(S.history)[0]?.length>200)
+    for(const k of Object.keys(S.history))S.history[k].shift();
+}
+
+/* ---------- 基线预稳 ---------- */
+function resetBaseline(){
+  S=freshState();
+  for(let i=0;i<800;i++)stepPhysics();
+  S.p.SRC=5.6; S.p.SB=6.9;
+  for(const k of Object.keys(S.p))S.alarms[k]={};
+  S.alarms={};
+  log("SYS","仿真基线已建立（稳态预计算 260 拍），系统处于稳定运行状态");
+  takeSnapshot("基线稳定点（事故前）",true);
+  return S;
+}
+
+/* ================= 指令系统 ================= */
+const CMD_TTL=APPROVE_TTL_MS;
+function makeCmd(o){
+  const id="CMD-"+String(S.seq++).padStart(3,"0");
+  return Object.assign({
+    id, status:"PENDING", createdAt:Date.now(), createdTick:S.tick,
+    approvedAt:null, steps:[], idx:0, note:"", verify:"unknown", replay:false,
+  },o);
+}
+function valveCmd(vid,pos){
+  const vd=VALVE_INIT[vid];
+  return makeCmd({type:"valve",desc:`${vd.name} → ${pos===1?"全开":"关闭"}`,
+    steps:[{kind:"valve",vid,pos,label:`${vd.name}${pos===1?"全开":"关闭"}`}]});
+}
+function compCmd(cid,load){
+  return makeCmd({type:"compressor",desc:`${COMPRS[cid].name} 负荷 → ${Math.round(load*100)}%`,
+    steps:[{kind:"comp",cid,load,label:`${COMPRS[cid].name}负荷调至 ${Math.round(load*100)}%`}]});
+}
+function isolateCmd(seg,order){
+  const steps=[];
+  const pre=order==="standard";
+  if(pre){
+    steps.push({kind:"comp",cid:"C1",load:seg.reducedLoad,label:`① 先降 C1 负荷至 ${Math.round(seg.reducedLoad*100)}%（防出口憋压）`});
+    steps.push({kind:"valve",vid:seg.close[0],pos:0,label:`② 关上游 ${VALVE_INIT[seg.close[0]].name}`});
+    steps.push({kind:"valve",vid:seg.close[1],pos:0,label:`③ 关下游 ${VALVE_INIT[seg.close[1]].name}（隔离泄漏段）`});
+    steps.push({kind:"comp",cid:"C2",load:seg.c2Load,label:`④ 微调 C2 负荷至 ${Math.round(seg.c2Load*100)}%（保持运行防抽空）`});
+    steps.push({kind:"valve",vid:seg.tie,pos:1,label:`⑤ 开 ${VALVE_INIT[seg.tie].name}，气源B转供北区`});
+  }else{
+    steps.push({kind:"valve",vid:seg.close[1],pos:0,label:`① 直接关下游 ${VALVE_INIT[seg.close[1]].name}（未降负荷！）`});
+    steps.push({kind:"valve",vid:seg.close[0],pos:0,label:`② 关上游 ${VALVE_INIT[seg.close[0]].name}`});
+    // 危险顺序：既未先降负荷、也未安排转供，后果持续
+  }
+  return makeCmd({type:"isolate",desc:`隔离 ${seg.name}（${pre?"标准规程":"危险顺序"}）`,
+    steps, order, segId:seg.id, unsafe:!pre});
+}
+function rerouteCmd(kind){
+  if(kind==="openTie")return makeCmd({type:"reroute",desc:"开启联络阀，气源B向北区转供",
+    steps:[{kind:"valve",vid:"V-TIE",pos:1,label:"开 V-TIE 联络阀"}]});
+  return makeCmd({type:"reroute",desc:"关闭联络阀，恢复单源供气",
+    steps:[{kind:"comp",cid:"C2",load:0.82,label:"恢复 C2 负荷 82%"},
+           {kind:"valve",vid:"V-TIE",pos:0,label:"关 V-TIE 联络阀"}]});
+}
+
+/* ---------- 风险预检（提交时展示，不强制拦截） ---------- */
+function precheckCmd(cmd){
+  const w=[];
+  for(const st of cmd.steps){
+    if(st.kind==="valve"){
+      const vd=VALVE_INIT[st.vid], cur=S.valves[st.vid];
+      if(st.pos===0&&cur===1){
+        if(st.vid==="V-F3"&&S.comps.C1.load>0.2) w.push({lvl:"bad",t:`关 ${vd.name} 而 C1 负荷 ${Math.round(S.comps.C1.load*100)}%：来气被截断、C2 抽空，且 C1 侧可能憋压超压`});
+        if(st.vid==="V-F2"&&S.comps.C1.load>0.2) w.push({lvl:"warn",t:`关 ${vd.name} 而 C1 高负荷（${Math.round(S.comps.C1.load*100)}%）：上游压力将快速抬升，建议先降负荷`});
+        if(st.vid==="V-TIE"&&S.valves["V-TIE"]===1) w.push({lvl:"warn",t:"关闭联络阀将切断气源B转供，请确认干线已恢复"});
+      }
+      if(st.pos===1&&cur===0&&st.vid==="V-TIE"&&S.p.SB<5.4)
+        w.push({lvl:"warn",t:"气源B压力偏低，转供能力可能不足"});
+    }
+    if(st.kind==="comp"&&S.comps[st.cid]&&Math.abs(S.comps[st.cid].load-st.load)>0.2)
+      w.push({lvl:"ok",t:`${COMPRS[st.cid].name}负荷 ${Math.round(S.comps[st.cid].load*100)}% → ${Math.round(st.load*100)}%`});
+  }
+  if(cmd.type==="isolate"&&cmd.unsafe)
+    w.unshift({lvl:"bad",t:"危险顺序：先关下游阀会在 C1 高负荷下形成超压点，并导致 C2 抽空停机。仅用于错误操作推演。"});
+  if(!w.length)w.push({lvl:"ok",t:"当前工况下未见明显冲突"});
+  return w;
+}
+
+/* ---------- 生命周期 ---------- */
+function submitCmd(cmd,autoApprove){
+  S.cmds.unshift(cmd);
+  log("CMD",`${cmd.id} 已下达（待审批）：${cmd.desc}`);
+  if(autoApprove){approveCmd(cmd,true);}
+  return cmd;
+}
+function approveCmd(cmd,silent){
+  if(cmd.status!=="PENDING")return;
+  cmd.status="APPROVED";cmd.approvedAt=Date.now();
+  log("OK",`${cmd.id} 审批通过，进入执行队列`);
+  scheduleNext(cmd);
+}
+function rejectCmd(cmd){
+  if(cmd.status!=="PENDING")return;
+  cmd.status="REJECTED";
+  log("SYS",`${cmd.id} 已驳回`);
+}
+function cancelCmd(cmd){
+  if(cmd.status==="PENDING"){cmd.status="CANCELED";log("SYS",`${cmd.id} 已撤销（未审批）`);}
+  else if(cmd.status==="APPROVED"||cmd.status==="EXECUTING"){
+    for(let i=cmd.idx;i<cmd.steps.length;i++)cmd.steps[i].cancel=true;
+    cmd.status="CANCELED";
+    log("SYS",`${cmd.id} 已撤销：${cmd.steps.filter(s=>!s.doneTick).length} 个未执行步骤终止，已执行 ${cmd.idx} 步保留`);
+  }
+}
+function expireCmd(cmd){
+  cmd.status="EXPIRED";
+  log("SYS",`${cmd.id} 审批超时（45s 未确认），指令失效`);
+}
+// 宏步骤：每 3 拍执行一步（可观察传播）
+function scheduleNext(cmd){
+  if(cmd.status==="APPROVED")cmd.status="EXECUTING";
+  cmd._nextTick=S.tick+3;
+}
+function tickCommands(){
+  for(const cmd of S.cmds){
+    if(cmd.status!=="EXECUTING")continue;
+    if(S.tick<(cmd._nextTick??0))continue;
+    while(cmd.idx<cmd.steps.length&&cmd.steps[cmd.idx].cancel)cmd.idx++;
+    if(cmd.idx>=cmd.steps.length){
+      cmd.status="DONE";
+      log("OK",`${cmd.id} 全部步骤执行完成`);
+      afterExecuted(cmd);
+      continue;
+    }
+    const st=cmd.steps[cmd.idx];
+    if(st.cancel){cmd.idx++;continue;}
+    st.doneTick=S.tick;
+    if(st.kind==="valve"){
+      const before=S.valves[st.vid];
+      S.valves[st.vid]=st.pos;
+      emitWave(st.pos===0?edgeOfValve(st.vid).a:"FN","valve",st.pos===0?-0.9:0.9);
+      log("CMD",`${cmd.id} 执行：${st.label}（阀位 ${before}→${st.pos}）`);
+    }else if(st.kind==="comp"){
+      S.comps[st.cid].load=st.load;
+      emitWave(edgeOfComp(st.cid).b,"comp",0.6);
+      log("CMD",`${cmd.id} 执行：${st.label}`);
+    }
+    cmd.idx++;
+    if(cmd.idx<cmd.steps.length){
+      if(cmd.steps.slice(cmd.idx).every(s=>s.cancel)){cmd.status="CANCELED";log("SYS",`${cmd.id} 剩余步骤均已撤销`);}
+      else scheduleNext(cmd);
+    }else{
+      cmd.status="DONE";log("OK",`${cmd.id} 全部步骤执行完成`);afterExecuted(cmd);
+    }
+  }
+}
+function edgeOfValve(vid){const d=VALVE_INIT[vid];return EDGES.find(e=>e.id===d.edge);}
+function edgeOfComp(cid){const c=COMPRS[cid];return EDGES.find(e=>e.id===c.edge);}
+function afterExecuted(cmd){
+  if(S.offline){
+    S.pendingVerify.push(cmd.id);
+    log("SYS",`${cmd.id} 已下发但通信中断，现场反馈待恢复后核验`);
+  }else{
+    cmd.verify="match"; // 确定性模型：在线执行即反馈一致
+  }
+}
+
+/* ================= 快照与重演 ================= */
+function isStable(){
+  // 近 14 拍各关键节点压力变化均 < 0.04MPa，且无报警
+  const watch=["HB","F1","F2","F3","HC","S2O","F4","P2","N4","N5","T"];
+  for(const id of watch){
+    const arr=S.history[id];
+    if(!arr||arr.length<14)return false;
+    const last=arr.slice(-12);
+    if(Math.max(...last.map(h=>h.p))-Math.min(...last.map(h=>h.p))>0.03)return false;
+  }
+  return Object.keys(S.alarms).length===0;
+}
+function cloneJson(o){return JSON.parse(JSON.stringify(o));}
+function takeSnapshot(name,base){
+  const snap={
+    name,tick:S.tick,clock:fmtClock(S.minute),at:Date.now(),base:!!base,
+    p:cloneJson(S.p),valves:cloneJson(S.valves),
+    comps:Object.fromEntries(Object.entries(S.comps).map(([k,v])=>[k,{load:v.load,trip:v.trip}])),
+    leak:S.leak,
+    actions: extractExecutedActions().filter(a=>a.tick<=S.tick),
+  };
+  S.snapshots.push(snap);
+  if(S.snapshots.length>12)S.snapshots.shift();
+  log("SYS",`已捕获稳定快照：${name}（${snap.clock}）`);
+}
+// 已执行动作：存绝对拍序；重演时以快照 tick 换为相对拍序
+function extractExecutedActions(){
+  const acts=[];
+  for(const c of S.cmds){
+    c.steps.forEach(st=>{
+      if(!st.cancel&&st.doneTick!==undefined)
+        acts.push({tick:st.doneTick,desc:c.desc,
+          step:{kind:st.kind,vid:st.vid,pos:st.pos,cid:st.cid,load:st.load,label:st.label}});
+    });
+  }
+  acts.sort((a,b)=>a.tick-b.tick);
+  return acts;
+}
+function startReplay(snap){
+  S._preReplayActions=extractExecutedActions();
+  const p=cloneJson(S.p); // 当前态保留供“退出重演”回到现场
+  S._liveShadow={p,valves:cloneJson(S.valves),comps:cloneJson(S.comps),
+    leak:S.leak,tick:S.tick,minute:S.minute};
+  S.p=cloneJson(snap.p);S.valves=cloneJson(snap.valves);S.leak=snap.leak;
+  for(const [k,v]of Object.entries(snap.comps))S.comps[k].load=v.load,S.comps[k].trip=false;
+  S.tick=snap.tick;S.minute=START_HHMM+snap.tick*TICK_MS/60000;
+  S.history={};S.alarms={};S.waves=[];S.offline=false;
+  // 优先用快照冻结动作；若从基线重演当前事件，则取当前已执行动作流
+  let acts=(snap.actions&&snap.actions.length)?cloneJson(snap.actions):
+    cloneJson(S._preReplayActions||[]);
+  S.replay={idx:0,actions:acts,snap};
+  // 快照应已包含其时刻前完成的动作；阀门/负荷已在 snap 中，动作流只重放快照之后发生的部分
+  S.replay.idx=acts.filter(a=>a.tick<=snap.tick).length;
+  log("SYS",`▶ 开始重演：${snap.name}，共 ${acts.length} 个已记录操作，审批自动通过`);
+  if(typeof document!=="undefined"){
+    document.getElementById("btnExitReplay").style.display="";
+    document.getElementById("btnReplay").style.display="none";
+  }
+}
+function endReplay(restoreLive){
+  if(restoreLive&&S._liveShadow){
+    const sh=S._liveShadow;
+    S.p=sh.p;S.valves=sh.valves;S.leak=sh.leak;S.tick=sh.tick;S.minute=sh.minute;
+    for(const [k,v]of Object.entries(sh.comps))S.comps[k].load=v.load,S.comps[k].trip=v.trip;
+    S.history={};
+  }
+  S.replay=null;S._liveShadow=null;
+  log("SYS","已退出重演，回到实时处置现场");
+  if(typeof document!=="undefined"){
+    document.getElementById("btnExitReplay").style.display="none";
+    document.getElementById("btnReplay").style.display="";
+  }
+}
+function tickReplay(){
+  const r=S.replay;
+  while(r.idx<r.actions.length&&r.actions[r.idx].tick<=S.tick){
+    const a=r.actions[r.idx++];const st=a.step;
+    if(st.kind==="valve"){
+      S.valves[st.vid]=st.pos;emitWave(st.vid==="V-TIE"?"FN":edgeOfValve(st.vid).a,"valve",st.pos?-0.9:0.9);
+      log("CMD",`[重演] ${st.label||a.desc} → ${st.pos?"全开":"关闭"}`);
+    }else if(st.kind==="comp"){
+      S.comps[st.cid].load=st.load;emitWave(edgeOfComp(st.cid).b,"comp",.6);
+      log("CMD",`[重演] ${st.label||COMPRS[st.cid].name} → ${Math.round(st.load*100)}%`);
+    }
+  }
+}
+
+/* ================= 泄漏 / 通信 ================= */
+function injectLeak(){
+  if(S.leak)return;
+  S.leak=true;
+  emitWave("LK","leak",-1.4);
+  log("ALARM","⚡ 注入想定：F2–F3 管段（LK+1.2km）出现疑似泄漏，压力波向上下游逐站传播");
+}
+function goOffline(){
+  if(S.offline)return;
+  S.offline=true;S.offlineTick=S.tick;
+  log("SYS","📡 通信链路中断：新指令无法审批；已批准指令的现场反馈暂缺，水力过程继续推演");
+}
+function restoreComm(){
+  // 找出中断期间/中断时已执行但未核验的指令，生成现场反馈
+  const cands=S.cmds.filter(c=>c.status==="EXECUTING"||c.status==="DONE");
+  const ids=cands.map(c=>c.id).filter(id=>S.pendingVerify.includes(id));
+  if(!ids.length){S.offline=false;log("OK","通信恢复：无待核验指令");return false;}
+  for(const id of ids){
+    const c=S.cmds.find(x=>x.id===id);
+    // 确定性反馈：中断≥8拍的宏注入 1 处反馈偏差（阀门卡阻），其余一致
+    c.fb=c.steps.map((st,i)=>{
+      let expect=st.kind==="valve"?(st.pos?"全开":"全关"):Math.round(st.load*100)+"%";
+      let actual=expect,match=true;
+      if(st.kind==="valve"&&S.offlineTick!==null&&(S.tick-S.offlineTick)>=8&&i===0&&c.type!=="valve"){
+        actual=st.pos?"42%（卡阻）":"55%（未关严）";match=false;
+      }
+      if(st.kind==="valve"&&c.type==="valve"&&(S.tick-(S.offlineTick??S.tick))>=8){
+        actual=st.pos?"40%（卡阻）":"60%（未关严）";match=false;
+      }
+      return {label:st.label,expect,actual,match,checked:false};
+    });
+  }
+  S.offline=false;
+  log("SYS","通信恢复：收到现场设备反馈，等待调度核验");
+  return ids;
+}
+
+/* ================= 主时钟 ================= */
+let uiTimer=null;
+function simTick(){
+  if(!S.running)return;
+  const n=S.speed===2?2:1;
+  for(let k=0;k<n;k++){
+    if(S.replay)tickReplay();
+    tickCommands();
+    stepPhysics();
+    S.tick++;S.minute+=TICK_MS/60000;
+    // 波到期事件
+    for(const w of S.waves){
+      if(w.arrive===S.tick){
+        const info=NODE_INFO[w.node];
+        if(info&&!info.virtual&&w.kind!=="comp"){
+          const m={leak:"压力扰动到达",valve:"阀位扰动到达",comp:"负荷调整到达"}[w.kind];
+          if(w.node==="HB"||w.node==="F2"||w.node==="F3"||w.node==="HC"||w.node==="S2O"||w.node==="P2"||w.node==="N4")
+            log("ALARM",`${m} ${info.name}（${S.p[w.node].toFixed(2)}MPa）`);
+        }
+      }
+    }
+    S.waves=S.waves.filter(w=>w.arrive>=S.tick-6&&w.arrive<=S.tick+8);
+    checkAlarms();
+    pushHistory();
+    calcZones();
+    // 自动稳定快照（非重演、距上次≥25 拍）
+    if(!S.replay&&S.tick%5===0&&isStable()){
+      const last=S.snapshots[S.snapshots.length-1];
+      if(!last||S.tick-last.tick>25)takeSnapshot("运行稳定点");
+    }
+  }
+}
+
+/* ================= UI 渲染 ================= */
+const $=id=>document.getElementById(id);
+const SVGNS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){
+  const n=document.createElementNS(SVGNS,tag);
+  for(const k in attrs)n.setAttribute(k,attrs[k]);
+  if(parent)parent.appendChild(n);return n;
+}
+function pressColor(p){
+  if(p>=P_LOW)return "#37c97a";
+  if(p>=P_CRIT)return "#f0b429";
+  return "#ef5350";
+}
+let particles=[];
+function buildSVG(){
+  const svg=$("svg");svg.innerHTML="";
+  // 背景海拔线装饰
+  el("path",{d:"M0,392 C160,360 300,400 480,372 C680,340 820,392 980,366 L980,460 L0,460 Z",
+    fill:"#0d1722",opacity:.9},svg);
+  // 管段
+  for(const e of EDGES){
+    const a=NODE_INFO[e.a],b=NODE_INFO[e.b];
+    const g=el("g",{class:"edge-g","data-e":e.id},svg);
+    el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:"#0a1017","stroke-width":13,"stroke-linecap":"round"},g);
+    el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:"#22303f","stroke-width":9,"stroke-linecap":"round",
+      class:"pipe",id:"pipe-"+e.id},g);
+    // 阀门
+    for(const vkey of ["va","vb"]){
+      const vid=e[vkey];if(!vid)continue;
+      let t=vkey==="va"?0.28:0.72;
+      if(vid==="V-TIE")t=0.30;
+      const x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
+      const vg=el("g",{class:"valve-g","data-vid":vid,transform:`translate(${x},${y})`},g);
+      el("rect",{x:-8,y:-8,width:16,height:16,rx:2,fill:"#14202e",stroke:"#37c2d8","stroke-width":1.4,
+        class:"vbody",id:"vbody-"+vid},vg);
+      el("line",{x1:-5,y1:-5,x2:5,y2:5,stroke:"#37c2d8","stroke-width":2,class:"vbar1",id:"vb1-"+vid},vg);
+      el("line",{x1:-5,y1:5,x2:5,y2:-5,stroke:"#37c2d8","stroke-width":2,class:"vbar2",id:"vb2-"+vid},vg);
+      const tx=vid==="V-TIE"?20:0, ty=vid==="V-TIE"?2:-13, anc=vid==="V-TIE"?"start":"middle";
+      el("text",{x:tx,y:ty,"text-anchor":anc,class:"name-label",id:"vlbl-"+vid},vg).textContent=vid;
+    }
+    // 压缩机
+    if(e.comp){
+      const x=(a.x+b.x)/2,y=a.y;
+      const cg=el("g",{transform:`translate(${x},${y-34})`},g);
+      el("circle",{r:15,fill:"#14202e",stroke:"#9d7bf0","stroke-width":1.6},cg);
+      el("circle",{r:8,fill:"#1c2a3a",class:"cfan",id:"fan-"+e.comp},cg);
+      el("path",{d:"M0,-7 A7,7 0 0 1 6,3.5 L0,0 Z",fill:"#9d7bf0",class:"cfan",id:"fanb-"+e.comp},cg);
+      el("path",{d:"M0,-7 A7,7 0 0 1 6,3.5 L0,0 Z",fill:"#9d7bf0",class:"cfan",
+        transform:"rotate(120)",id:"fanc-"+e.comp},cg);
+      el("path",{d:"M0,-7 A7,7 0 0 1 6,3.5 L0,0 Z",fill:"#9d7bf0",class:"cfan",
+        transform:"rotate(240)",id:"fand-"+e.comp},cg);
+      el("text",{x:0,y:-21,"text-anchor":"middle",class:"name-label",
+        fill:"#c9b5f7"},g).textContent=e.comp;
+    }
+  }
+  // 节点
+  for(const [id,d] of NODES){
+    const g=el("g",{class:"node-g","data-n":id,transform:`translate(${d.x},${d.y})`},svg);
+    el("circle",{class:"sel-ring",r:13,id:"ring-"+id},g);
+    if(d.src)el("rect",{x:-9,y:-9,width:18,height:18,rx:3,fill:"#13414a",stroke:"#37c2d8","stroke-width":1.5},g);
+    else if(d.virtual)el("path",{d:"M0,-9 L9,7 L-9,7 Z",fill:"#3d1620",stroke:"#ef5350","stroke-width":1.5,id:"lkmark"},g);
+    else el("circle",{r:8,fill:"#17222f",stroke:"#4f8ff7","stroke-width":1.5,id:"nb-"+id},g);
+    el("text",{x:0,y:3,"text-anchor":"middle","font-size":9,fill:"#9fd6e2","pointer-events":"none"},g).textContent=
+      d.src?"源":(d.virtual?"漏":"");
+    el("text",{x:0,y:-16,"text-anchor":"middle",class:"press-label",id:"pl-"+id},g).textContent="";
+    el("text",{x:0,y:d.y<140?26:(d.y>280?-18:26),"text-anchor":"middle",class:"name-label"},g).textContent=d.name;
+    g.addEventListener("click",()=>{S.selected=id;renderAll();});
+  }
+}
+function renderSVG(){
+  for(const e of EDGES){
+    const a=NODE_INFO[e.a],b=NODE_INFO[e.b];
+    const pm=(S.p[e.a]+S.p[e.b])/2;
+    const line=$("pipe-"+e.id);
+    line.setAttribute("stroke",pressColor(pm));
+    line.setAttribute("opacity",0.85);
+    // 关阀管段变虚
+    let closed=false;
+    if(e.va&&S.valves[e.va]===0)closed=true;
+    if(e.vb&&S.valves[e.vb]===0)closed=true;
+    line.setAttribute("stroke-dasharray",closed?"3 6":"none");
+    line.setAttribute("opacity",closed?0.4:0.9);
+  }
+  for(const [id,d] of NODES){
+    const t=$("pl-"+id);if(t){t.textContent=S.p[id].toFixed(2);
+      t.setAttribute("fill",d.virtual&&!S.leak?"#46566a":pressColor(S.p[id]));}
+    const ring=$("ring-"+id);if(ring)ring.style.display=S.selected===id?"block":"none";
+    const nb=$("nb-"+id);
+    if(nb){nb.setAttribute("stroke",pressColor(S.p[id]));
+      if(S.p[id]>PMAX_HI)nb.setAttribute("fill","#5a1f24");}
+  }
+  // 阀门状态
+  for(const [vid] of Object.entries(VALVE_INIT)){
+    const open=S.valves[vid]===1;
+    const b1=$("vb1-"+vid),b2=$("vb2-"+vid),body=$("vbody-"+vid);
+    if(!b1)continue;
+    const c=open?"#37c97a":"#ef5350";
+    b1.setAttribute("stroke",c);b2.setAttribute("stroke",c);
+    body.setAttribute("stroke",c);
+    b2.style.display=open?"none":"block";
+  }
+  // 泄漏闪烁
+  const lk=document.getElementById("lkmark");
+  if(lk)lk.setAttribute("opacity",S.leak?(0.55+0.45*Math.sin(Date.now()/160)):0.15);
+  // 压缩机风扇
+  for(const [id,c] of Object.entries(COMPRS)){
+    const cs=S.comps[id];
+    const sp=cs.run?(cs.load>0.4?"fast":cs.load>0.2?"mid":"slow"):"stop";
+    for(const s of ["fan-","fanb-","fanc-","fand-"]){const n=$(s+id);if(n)n.setAttribute("class","cfan "+sp);}
+  }
+  // 压力波圆环
+  drawWaves();
+  drawParticles();
+}
+let waveEls={};
+function drawWaves(){
+  const svg=$("svg");
+  const live=new Set();
+  for(const w of S.waves){
+    if(w.arrive<S.tick||w.arrive>S.tick+5)continue;
+    const d=NODE_INFO[w.node];if(!d)continue;
+    const prog=(S.tick-w.arrive)/6;
+    if(prog<0||prog>1)continue;
+    const key=w.node+w.kind+w.from;
+    let c=waveEls[key];
+    if(!c){c=el("circle",{r:6,fill:"none","stroke":"#9d7bf0","stroke-width":2},svg);waveEls[key]=c;}
+    live.add(key);
+    c.setAttribute("cx",d.x);c.setAttribute("cy",d.y);
+    c.setAttribute("r",6+prog*22);c.setAttribute("opacity",1-prog);
+  }
+  for(const k in waveEls){
+    if(live.has(k))continue;
+    waveEls[k].remove();delete waveEls[k];
+  }
+}
+function drawParticles(){
+  const svg=$("svg");
+  if(!svg._parts){
+    svg._parts=[];
+    EDGES.forEach(e=>{for(let i=0;i<2;i++){
+      svg._parts.push({e,t:Math.random(),
+        node:el("circle",{r:2.2,fill:"#d9f4fa",opacity:.85},svg)});
+    }});
+  }
+  for(const pt of svg._parts){
+    const e=pt.e,a=NODE_INFO[e.a],b=NODE_INFO[e.b];
+    const q=S.flow[e.id]||0;
+    pt.t+=Math.min(0.06,Math.abs(q)*0.0016+0.0012);
+    let t=pt.t%1; if(q<0)t=1-t;
+    pt.node.setAttribute("cx",a.x+(b.x-a.x)*t);
+    pt.node.setAttribute("cy",a.y+(b.y-a.y)*t);
+    pt.node.setAttribute("opacity",Math.abs(q)<0.3?0.12:0.9);
+  }
+}
+
+/* ---------- 区域 / 设备面板 ---------- */
+function renderZones(){
+  const z=calcZones(),box=$("zoneList");box.innerHTML="";
+  for(const zz of ZONES){
+    const r=z[zz.id],pct=Math.round(r.ratio*100);
+    const stTxt={ok:"保障达标",low:"低于最低供应",crit:"供应危机"}[r.status];
+    const col={ok:"#37c97a",low:"#f0b429",crit:"#ef5350"}[r.status];
+    box.innerHTML+=`<div class="zone">
+      <div class="zh"><span class="zn">${zz.name}</span>
+        <span class="zs ${r.status}">${stTxt}</span></div>
+      <div class="meter">
+        <div><div class="mv" style="color:${col}">${pct}%</div><div class="mk">供气保障率</div></div>
+        <div><div class="mv">${r.minp.toFixed(2)}</div><div class="mk">最低压力 MPa</div></div>
+        <div><div class="mv">${zz.pmin.toFixed(1)}</div><div class="mk">要求 ≥ MPa</div></div>
+      </div>
+      <div class="bar"><i style="width:${pct}%;background:${col}"></i></div>
+    </div>`;
+  }
+}
+function renderEquip(){
+  const cb=$("compList");cb.innerHTML="";
+  for(const [id,c] of Object.entries(COMPRS)){
+    const cs=S.comps[id],e=EDGES.find(x=>x.id===c.edge);
+    const cls=cs.run?(cs.load>0.4?"fast":cs.load>0.2?"mid":"slow"):"stop";
+    const state=cs.run?`运行 ${Math.round(cs.load*100)}% · 流量${cs.q.toFixed(0)} · 压升${cs.dp.toFixed(2)}MPa`
+      :cs.trip?`<span style="color:#f3a3a1">抽空跳闸 · 联锁停机，等待复位</span> 吸${S.p[e.a].toFixed(2)} 出${S.p[e.b].toFixed(2)}`
+      :`<span style="color:#f5cf7e">止回关闭/待机</span> 吸${S.p[e.a].toFixed(2)} 出${S.p[e.b].toFixed(2)}`;
+    cb.innerHTML+=`<div class="equip">
+      <div class="en"><span class="fan ${cls}"></span>${c.name}</div>
+      <div class="es">${state}</div>
+      <div class="ev">${S.p[e.b].toFixed(2)} MPa</div></div>`;
+  }
+  const vb=$("valveList");vb.innerHTML="";
+  for(const [vid,d] of Object.entries(VALVE_INIT)){
+    const open=S.valves[vid]===1;
+    vb.innerHTML+=`<div class="equip">
+      <div class="en">${vid}</div><div class="es">${d.name}</div>
+      <div class="ev" style="color:${open?"#8fe6b0":"#f3a3a1"}">${open?"全开":"关闭"}</div></div>`;
+  }
+}
+
+/* ---------- 指令卡片 ---------- */
+function renderCmds(){
+  const box=$("cmdList");box.innerHTML="";
+  $("cmdCount").textContent=S.cmds.length?`${S.cmds.length} 条`:"";
+  for(const c of S.cmds.slice(0,12)){
+    const remain=Math.max(0,CMD_TTL-(Date.now()-c.createdAt));
+    const stName={PENDING:"待审批",APPROVED:"已批准",EXECUTING:"执行中",DONE:"已完成",
+      EXPIRED:"已超时",CANCELED:"已撤销",REJECTED:"已驳回",FAILED:"执行失败"}[c.status];
+    let steps="";
+    c.steps.forEach((s,i)=>{
+      const cls=i<c.idx?(s.cancel?"cancel":"done"):(i===c.idx&&c.status==="EXECUTING"?"run":"wait");
+      steps+=`<div class="step ${cls}"><span class="sd">✓</span>${s.label}</div>`;
+    });
+    let acts="";
+    if(c.status==="PENDING"&&!S.replay){
+      acts=`<button class="primary" data-act="approve" data-id="${c.id}" ${S.offline?"disabled":""}>批准</button>
+            <button data-act="reject" data-id="${c.id}" ${S.offline?"disabled":""}>驳回</button>
+            <button data-act="cancel" data-id="${c.id}">撤销</button>`;
+    }else if((c.status==="APPROVED"||c.status==="EXECUTING")&&!S.replay){
+      acts=`<button class="danger" data-act="cancel" data-id="${c.id}">撤销未执行步骤</button>`;
+    }
+    box.innerHTML+=`<div class="cmd">
+      <div class="ch"><span class="id">${c.id}</span><span class="desc">${c.desc}</span>
+        <span class="st ${c.status}">${stName}</span></div>
+      ${steps?`<div class="cb"><div class="steps">${steps}</div>
+        ${c.status==="PENDING"?`<div class="ttl"><i style="width:${remain/CMD_TTL*100}%"></i></div>
+        <div style="margin-top:3px">审批剩余 ${(remain/1000).toFixed(0)}s · 超时自动失效${S.offline?" · 通信中断，暂不能审批":""}</div>`:""}
+      </div>`:""}
+      ${acts?`<div class="acts">${acts}</div>`:""}
+    </div>`;
+  }
+  box.querySelectorAll("button[data-act]").forEach(b=>{
+    b.onclick=()=>{
+      const c=S.cmds.find(x=>x.id===b.dataset.id);
+      if(b.dataset.act==="approve"){S.modalCmd=c;openApprove(c);}
+      if(b.dataset.act==="reject")rejectCmd(c);
+      if(b.dataset.act==="cancel")cancelCmd(c);
+      renderAll();
+    };
+  });
+}
+function expireLoop(){
+  for(const c of S.cmds)
+    if(c.status==="PENDING"&&Date.now()-c.createdAt>CMD_TTL)expireCmd(c);
+}
+
+/* ---------- 日志 ---------- */
+let logShown=0;
+function renderLog(){
+  if(S.events.length===logShown)return;
+  const box=$("logList");
+  const frag=document.createDocumentFragment();
+  for(let i=logShown;i<S.events.length;i++){
+    const e=S.events[i];
+    const d=document.createElement("div");
+    d.className="logline "+e.kind;
+    d.innerHTML=`<span class="lt">${e.clock}</span><span>${e.text}</span>`;
+    frag.appendChild(d);
+  }
+  logShown=S.events.length;
+  box.appendChild(frag);
+  box.scrollTop=box.scrollHeight;
+}
+
+/* ---------- 趋势图 ---------- */
+function drawTrend(){
+  const cv=$("trend"),dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth,h=cv.clientHeight;
+  if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+  const x=cv.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
+  x.clearRect(0,0,w,h);x.font="10px sans-serif";
+  const padL=34,padR=10,padT=8,padB=14;
+  // 网格
+  x.strokeStyle="#1d2936";x.fillStyle="#7d8fa1";x.lineWidth=1;
+  for(let p=0;p<=10;p+=2){
+    const yy=padT+(h-padT-padB)*(1-p/10);
+    x.beginPath();x.moveTo(padL,yy);x.lineTo(w-padR,yy);x.stroke();
+    x.fillText(p.toFixed(0),8,yy+3);
+  }
+  const series=[
+    {id:"HB",color:"#37c2d8",scale:v=>v},
+    {id:"S2O",color:"#4f8ff7",scale:v=>v},
+    {id:"N4",color:"#37c97a",scale:v=>v},
+    {id:"__north",color:"#f0b429",scale:v=>v/10,min:true},
+  ];
+  const arr=S.history.HB||[];if(arr.length<2)return;
+  const t0=arr[0].t,t1=arr[arr.length-1].t;
+  const X=t=>padL+(w-padL-padR)*((t-t0)/Math.max(1,t1-t0));
+  const Y=v=>padT+(h-padT-padB)*(1-clamp(v,0,10)/10);
+  // 低限参考线
+  x.strokeStyle="#ef535066";x.setLineDash([4,4]);
+  x.beginPath();x.moveTo(padL,Y(P_LOW));x.lineTo(w-padR,Y(P_LOW));x.stroke();x.setLineDash([]);
+  for(const s of series){
+    const a=S.history[s.id];if(!a)continue;
+    x.strokeStyle=s.color;x.beginPath();
+    a.forEach((pt,i)=>{const xx=X(pt.t),yy=Y(s.scale(pt.p));i?x.lineTo(xx,yy):x.moveTo(xx,yy);});
+    x.stroke();
+  }
+}
+
+/* ================= 表单与交互 ================= */
+function initForms(){
+  const vt=$("valveTarget");
+  vt.innerHTML=Object.entries(VALVE_INIT).map(([id,d])=>`<option value="${id}">${id} ${d.name}</option>`).join("");
+  const ct=$("compTarget");
+  ct.innerHTML=Object.entries(COMPRS).map(([id,c])=>`<option value="${id}">${c.name}</option>`).join("");
+  $("isoTarget").innerHTML=ISO_SEGMENTS.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+  const types=["formValve","formComp","formIso","formReroute"];
+  $("cmdType").onchange=e=>{
+    types.forEach((t,i)=>$(t).style.display=["valve","compressor","isolate","reroute"][i]===e.target.value?"":"none");
+    refreshGuard();
+  };
+  const syncLoad=()=>{
+    const cid=$("compTarget").value;
+    const v=Math.round(S.comps[cid].load*100);
+    $("compLoad").value=v;$("compLbl").textContent=v+"%";
+  };
+  $("compTarget").addEventListener("change",()=>{syncLoad();refreshGuard();});
+  $("compLoad").oninput=e=>{$("compLbl").textContent=e.target.value+"%";refreshGuard();};
+  [vt,$("valvePos"),ct,$("compLoad"),$("isoTarget"),$("isoOrder"),$("rerouteTarget")].forEach(n=>{
+    n.addEventListener("change",refreshGuard);
+  });
+  $("btnSubmit").onclick=()=>{
+    if(S.offline&&!S.replay){alert("通信中断：无法下达新指令，请等待链路恢复");return;}
+    const cmd=buildFormCmd();
+    const auto=!!S.replay;
+    submitCmd(cmd,auto);
+    renderAll();
+  };
+  // tabs
+  document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    document.querySelectorAll(".pane").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on");$("pane"+({cmd:"Cmd",zone:"Zone",log:"log"}[t.dataset.tab])).classList.add("on");
+  });
+  // 顶栏
+  $("btnPlay").onclick=()=>{S.running=!S.running;$("btnPlay").textContent=S.running?"⏸ 暂停":"▶ 运行";};
+  $("btnStep").onclick=()=>{S.running=false;$("btnPlay").textContent="▶ 运行";simTick();renderAll();};
+  $("btnSpeed").onclick=()=>{S.speed=S.speed===2?1:2;$("btnSpeed").textContent="速度 "+S.speed+"×";};
+  $("btnLeak").onclick=()=>{injectLeak();};
+  $("btnOffline").onclick=()=>{
+    if(!S.offline){goOffline();$("btnOffline").textContent="📶 恢复通信";$("btnOffline").className="primary";}
+    else{const ids=restoreComm();if(ids)openVerify(ids);}
+  };
+  $("btnReset").onclick=()=>{
+    if(S.replay)endReplay(false);
+    resetBaseline();logShown=0;$("logList").innerHTML="";
+    $("btnOffline").textContent="📡 中断通信";$("btnOffline").className="warn";
+    buildSVG();renderAll();
+  };
+  $("btnReplay").onclick=openReplay;
+  $("btnExitReplay").onclick=()=>endReplay(true);
+}
+function buildFormCmd(){
+  const t=$("cmdType").value;
+  if(t==="valve")return valveCmd($("valveTarget").value,parseInt($("valvePos").value,10));
+  if(t==="compressor")return compCmd($("compTarget").value,parseInt($("compLoad").value,10)/100);
+  if(t==="isolate"){
+    const seg=ISO_SEGMENTS.find(s=>s.id===$("isoTarget").value);
+    return isolateCmd(seg,$("isoOrder").value);
+  }
+  return rerouteCmd($("rerouteTarget").value);
+}
+function refreshGuard(){
+  const box=$("guardBox"),cmd=buildFormCmd(),ws=precheckCmd(cmd);
+  box.innerHTML=ws.map(w=>`<div class="guard ${w.lvl}">${w.lvl==="bad"?"⛔ ":w.lvl==="warn"?"⚠ ":"✓ "}${w.t}</div>`).join("");
+}
+
+/* ---------- 审批弹窗 ---------- */
+function openApprove(cmd){
+  S.modalCmd=cmd;
+  const ws=precheckCmd(cmd);
+  $("approveBody").innerHTML=`
+    <div style="margin-bottom:10px"><b>${cmd.id}</b> · ${cmd.desc}</div>
+    <div class="steps">${cmd.steps.map(s=>`<div class="step wait"><span class="sd">✓</span>${s.label}</div>`).join("")}</div>
+    <div style="margin-top:10px">${ws.map(w=>`<div class="guard ${w.lvl}">${w.t}</div>`).join("")}</div>
+    <div class="ckline">审批时限 45 秒，超时指令自动失效；批准后未开始执行的步骤仍可撤销。</div>`;
+  $("approveModal").classList.add("show");
+}
+function initModals(){
+  $("apApprove").onclick=()=>{approveCmd(S.modalCmd);$("approveModal").classList.remove("show");renderAll();};
+  $("apReject").onclick=()=>{rejectCmd(S.modalCmd);$("approveModal").classList.remove("show");renderAll();};
+  $("vyCancel").onclick=()=>{
+    for(const id of S._verifyIds||[]){const c=S.cmds.find(x=>x.id===id);if(c)cancelCmd(c);}
+    $("verifyModal").classList.remove("show");log("SYS","未确认指令已终止，保持当前管态");renderAll();
+  };
+  $("vyResume").onclick=()=>{$("verifyModal").classList.remove("show");
+    log("OK","现场反馈核验一致，系统续跑自动处置");renderAll();};
+  $("rpClose").onclick=()=>$("replayModal").classList.remove("show");
+  $("rpStart").onclick=()=>{
+    const id=$("snapList").dataset.sel;const snap=S.snapshots.find(s=>s.name===id||s.clock===id);
+    $("replayModal").classList.remove("show");startReplay(snap);renderAll();
+  };
+}
+/* ---------- 恢复核验弹窗 ---------- */
+function openVerify(ids){
+  S._verifyIds=ids;
+  const body=$("verifyBody");body.innerHTML="";
+  let anyBad=false;
+  for(const id of ids){
+    const c=S.cmds.find(x=>x.id===id);
+    const h=document.createElement("div");
+    h.style.cssText="font-weight:600;margin:6px 0";h.textContent=`${id} · ${c.desc}`;
+    body.appendChild(h);
+    c.fb.forEach((f,i)=>{
+      const row=document.createElement("div");
+      row.className="fbrow";
+      row.innerHTML=`<div class="fi">${f.label}</div>
+        <div>期望 <b>${f.expect}</b></div><div>反馈 <b style="color:${f.match?"#8fe6b0":"#f3a3a1"}">${f.actual}</b></div>
+        <label class="fr" style="border:1px solid #2e3d4e"><input type="checkbox" class="fbc" ${f.match?"checked":""}> 已现场核实</label>`;
+      body.appendChild(row);
+      if(!f.match)anyBad=true;
+      row.querySelector(".fbc").onchange=()=>{
+        f.checked=row.querySelector(".fbc").checked;
+        row.classList.toggle("match",f.checked&&f.match);
+        row.classList.toggle("mismatch",f.checked&&!f.match);
+        refreshResume();
+      };
+      if(f.match){row.querySelector(".fbc").checked=true;f.checked=true;row.classList.add("match");}
+      else{row.classList.add("mismatch");}
+    });
+  }
+  const hint=document.createElement("div");hint.className="ckline";hint.id="vyHint";
+  hint.innerHTML=anyBad
+    ?'<span class="no">存在反馈偏差（阀门卡阻/未关严）：需现场处置并逐项勾选核实后，方可续跑。</span>'
+    :'逐项确认设备反馈与指令一致后可续跑。';
+  body.appendChild(hint);
+  refreshResume();
+  $("verifyModal").classList.add("show");
+}
+function refreshResume(){
+  let all=true;
+  for(const id of S._verifyIds||[]){const c=S.cmds.find(x=>x.id===id);
+    if(c)for(const f of c.fb)if(!f.checked)all=false;}
+  $("vyResume").disabled=!all;
+}
+/* ---------- 重演弹窗 ---------- */
+function openReplay(){
+  const box=$("snapList");box.innerHTML="";
+  S.snapshots.forEach(s=>{
+    const d=document.createElement("div");d.className="snap";
+    d.innerHTML=`<div class="si"><b>${s.name}</b>
+      <div class="st2">${s.clock} · tick ${s.tick} · 含 ${s.actions.length} 个已记录操作${s.leak?" · 泄漏已存在":""}</div></div>
+      <button>选择</button>`;
+    d.querySelector("button").onclick=()=>{
+      box.querySelectorAll(".snap").forEach(x=>x.style.borderColor="#263342");
+      d.style.borderColor="#37c2d8";box.dataset.sel=s.clock;$("rpStart").disabled=false;
+    };
+    box.appendChild(d);
+  });
+  $("rpStart").disabled=true;
+  $("replayModal").classList.add("show");
+}
+
+/* ================= 总渲染 / 启动 ================= */
+function renderStatus(){
+  $("clock").textContent=fmtClock(S.minute);
+  const alarmKeys=Object.keys(S.alarms);
+  const crit=alarmKeys.some(k=>k.endsWith(":op")||k.endsWith(":crit")||k.endsWith(":trip"));
+  const ss=$("sysState");
+  if(S.replay){ss.innerHTML='<span class="dot a"></span><b style="color:#c9b5f7">重演中</b>';}
+  else if(crit)ss.innerHTML='<span class="dot r"></span><b style="color:#f3a3a1">异常处置中</b>';
+  else if(alarmKeys.length)ss.innerHTML='<span class="dot a"></span><b>压力波动监视</b>';
+  else ss.innerHTML='<span class="dot g"></span><b>系统稳定</b>';
+  const cs=$("commState");
+  cs.innerHTML=S.offline?'<span class="dot r"></span><b style="color:#f3a3a1">通信中断</b>'
+    :'<span class="dot g"></span><b>通信正常</b>';
+  if(S.selected){
+    const d=NODE_INFO[S.selected];
+    $("selInfo").textContent=`已选：${d.name} ${S.p[S.selected].toFixed(2)}MPa`+
+      (d.demand?` · 分输 ${d.demand}`:"")+(d.src?" · 压力源":"");
+  }
+}
+function renderAll(){
+  renderStatus();renderSVG();renderZones();renderEquip();renderCmds();renderLog();
+}
+function boot(){
+  resetBaseline();
+  buildSVG();initForms();initModals();refreshGuard();
+  renderAll();
+  // 物理时钟独立于渲染（即使后台/节流也按拍推进）
+  setInterval(()=>{simTick();expireLoop();},TICK_MS);
+  setInterval(()=>{renderAll();drawTrend();},333);
+  (function raf(){renderAll();drawTrend();requestAnimationFrame(raf);})();
+}
+if(typeof document!=="undefined")document.addEventListener("DOMContentLoaded",boot);
+
+/* 无头测试钩子 */
+if(typeof window!=="undefined")window.__GAS={S:()=>S,resetBaseline,injectLeak,submitCmd,valveCmd,compCmd,
+  isolateCmd,rerouteCmd,approveCmd,cancelCmd,stepPhysics,simTick,calcZones,goOffline,restoreComm,
+  startReplay,expireLoop,ISO_SEGMENTS,COMPRS,VALVE_INIT,EDGE_COUNT:EDGES.length};
+</script>
+</body>
+</html>
